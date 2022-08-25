@@ -1,6 +1,6 @@
 name: CI
 env:
-  $RODBUS_TAG: df952d8721d9d5ec21d3977f1e5fb76a42175f07
+  $RODBUS_TAG: fdc4983bc9d18f248a49a4048ca6e6464e68bc5d
 on:
   push:
     branches:
@@ -9,8 +9,8 @@ on:
       - "*"
   pull_request:
 jobs:
-  # Build bindings on Windows x64 [64-bit MSVC (Windows 7+) (x86_64-pc-windows-msvc)] and x86 [32-bit MSVC (Windows 7+) (i686-pc-windows-msvc)]
-  bindings-windows:
+  # Windows MSVC x64 FFI  (Windows 7+)
+  ffi-windows:
     runs-on: windows-latest
     strategy:
       fail-fast: false
@@ -49,8 +49,8 @@ jobs:
         with:
           name: ffi-modules
           path: ffi/bindings/c/generated/${{ matrix.target }}/lib
-  # Cross-compilation for ARM devices and produce C bindings
-  cross:
+  # Cross-compile FFI for Linux platforms
+  ffi-cross:
     strategy:
       fail-fast: false
       matrix:
