@@ -23,7 +23,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           repository: stepfunc/rodbus
-          ref: $RODBUS_TAG
+          ref: ${{ env.RODBUS_TAG }}
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -64,7 +64,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           repository: stepfunc/rodbus
-          ref: $RODBUS_TAG
+          ref: ${{ env.RODBUS_TAG }}
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
