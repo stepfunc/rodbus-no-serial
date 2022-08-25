@@ -40,8 +40,11 @@ jobs:
       - name: Build FFI
         run: cargo build -p rodbus-ffi --release --no-default-features --features tls --target ${{ matrix.target }} --message-format json | Out-File -encoding "UTF8" .\logs\${{ matrix.target }}\build.ffi.log
         # this is required just to copy the libraries to the right place
-      - name: Generate C Bindings
-        run: cargo run --bin rodbus-bindings -- --c --no-tests
+      - name: C bindings
+        uses: actions-rs/cargo@v1
+        with:
+          command: run
+          args: --release --target ${{ matrix.target }} --bin rodbus-bindings -- --c ${{ matrix.extra-params }}
       - name: Upload Build Logs
         uses: actions/upload-artifact@v3
         with:
@@ -82,8 +85,12 @@ jobs:
       - name: Build FFI
         run: cross build -p rodbus-ffi --release --no-default-features --features tls --target ${{ matrix.target }} --message-format json > logs/${{ matrix.target }}/build.ffi.log
         # this is required just to copy the libraries to the right place
-      - name: Generate C Bindings
-        run: cross run --bin rodbus-bindings -- --c --no-tests
+      - name: C bindings
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: run
+          args: --release --target ${{ matrix.target }} --bin rodbus-bindings -- --c --no-tests
       - name: Upload Build Logs
         uses: actions/upload-artifact@v3
         with:
