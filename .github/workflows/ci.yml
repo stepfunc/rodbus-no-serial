@@ -35,26 +35,17 @@ jobs:
         run: Copy-Item -Path .cargo/config-windows.toml -Destination .cargo/config.toml
       - name: Caching
         uses: Swatinem/rust-cache@v2
-      - name: Create log dir
-        run: mkdir logs\${{ matrix.target }}
+      - name: Create FFI modules dir
+        run: mkdir ffi-modules\${{ matrix.target }}\lib
       - name: Build FFI
-        run: cargo build -p rodbus-ffi --release --no-default-features --features tls --target ${{ matrix.target }} --message-format json | Out-File -encoding "UTF8" .\logs\${{ matrix.target }}\build.ffi.log
-        # this is required just to copy the libraries to the right place
-      - name: C bindings
-        uses: actions-rs/cargo@v1
-        with:
-          command: run
-          args: --release --target ${{ matrix.target }} --bin rodbus-bindings -- --c ${{ matrix.extra-params }}
-      - name: Upload Build Logs
+        run: cargo build -p rodbus-ffi --release --no-default-features --features tls --target ${{ matrix.target }} --message-format json | Out-File -encoding "UTF8" .\ffi-modules\${{ matrix.target }}\build.ffi.log
+      - name: Copy .dll
+        run: cp .\target\${{ matrix.target }}\release\rodbus_ffi.dll .\ffi-modules\${{ matrix.target }}\lib
+      - name: Upload FFI modules
         uses: actions/upload-artifact@v3
         with:
           name: ffi-modules
-          path: logs
-      - name: Upload compiled FFI modules
-        uses: actions/upload-artifact@v3
-        with:
-          name: ffi-modules
-          path: ffi/bindings/c/generated/${{ matrix.target }}/lib
+          path: ffi-modules
   # Cross-compile FFI for Linux platforms
   ffi-cross:
     strategy:
@@ -80,24 +71,14 @@ jobs:
           override: true
       - name: Install Rust Cross
         run: cargo install cross
-      - name: Create Log Dir
-        run: mkdir -p logs/${{ matrix.target }}
+      - name: Create FFI modules dir
+        run: mkdir -p ffi-modules/${{ matrix.target }}/lib
       - name: Build FFI
-        run: cross build -p rodbus-ffi --release --no-default-features --features tls --target ${{ matrix.target }} --message-format json > logs/${{ matrix.target }}/build.ffi.log
-        # this is required just to copy the libraries to the right place
-      - name: C bindings
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: true
-          command: run
-          args: --release --target ${{ matrix.target }} --bin rodbus-bindings -- --c --no-tests
-      - name: Upload Build Logs
-        uses: actions/upload-artifact@v3
-        with:
-          name: ffi-modules
-          path: logs
+        run: cross build -p rodbus-ffi --release --no-default-features --features tls --target ${{ matrix.target }} --message-format json > ffi-modules/${{ matrix.target }}/build.ffi.log
+      - name: Copy .so
+        run: cp  .\target\${{ matrix.target }}\release\librodbus_ffi.so .\ffi-modules\${{ matrix.target }}\lib
       - name: Upload compiled FFI modules
         uses: actions/upload-artifact@v3
         with:
           name: ffi-modules
-          path: ffi/bindings/c/generated/${{ matrix.target }}/lib
+          path: ffi-modules
