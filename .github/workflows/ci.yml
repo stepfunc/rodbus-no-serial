@@ -1,6 +1,7 @@
 name: CI
 env:
   $RODBUS_TAG: fdc4983bc9d18f248a49a4048ca6e6464e68bc5d
+  $RODBUS_FFI_BUILD_ARGS: --release -p rodbus-ffi --no-default-features --features tls
 on:
   push:
     branches:
@@ -38,7 +39,7 @@ jobs:
       - name: Create FFI modules dir
         run: mkdir ffi-modules\${{ matrix.target }}\lib
       - name: Build FFI
-        run: cargo build -p rodbus-ffi --release --no-default-features --features tls --target ${{ matrix.target }} --message-format json | Out-File -encoding "UTF8" .\ffi-modules\${{ matrix.target }}\build.ffi.log
+        run: cargo build ${{ env.$RODBUS_FFI_BUILD_ARGS }} --target ${{ matrix.target }} --message-format json | Out-File -encoding "UTF8" .\ffi-modules\${{ matrix.target }}\lib\build.log
       - name: Copy .dll
         run: cp .\target\${{ matrix.target }}\release\rodbus_ffi.dll .\ffi-modules\${{ matrix.target }}\lib
       - name: Upload FFI modules
@@ -69,12 +70,14 @@ jobs:
           toolchain: stable
           target: ${{ matrix.target }}
           override: true
+      - name: Caching
+        uses: Swatinem/rust-cache@v2
       - name: Install Rust Cross
         run: cargo install cross
       - name: Create FFI modules dir
         run: mkdir -p ffi-modules/${{ matrix.target }}/lib
       - name: Build FFI
-        run: cross build -p rodbus-ffi --release --no-default-features --features tls --target ${{ matrix.target }} --message-format json > ffi-modules/${{ matrix.target }}/build.ffi.log
+        run: cross build ${{ env.$RODBUS_FFI_BUILD_ARGS }} --target ${{ matrix.target }} --message-format json > ffi-modules/${{ matrix.target }}/lib/build.log
       - name: Copy .so
         run: cp  ./target/${{ matrix.target }}/release/librodbus_ffi.so ./ffi-modules/${{ matrix.target }}/lib
       - name: Upload compiled FFI modules
