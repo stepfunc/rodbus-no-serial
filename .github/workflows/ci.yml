@@ -39,7 +39,7 @@ jobs:
       - name: Create FFI modules dir
         run: mkdir ffi-modules\${{ matrix.target }}\lib
       - name: Build FFI
-        run: cargo build ${{ env.$RODBUS_FFI_BUILD_ARGS }} --target ${{ matrix.target }} --message-format json | Out-File -encoding "UTF8" .\ffi-modules\${{ matrix.target }}\lib\build.log
+        run: cargo build ${{ env.RODBUS_FFI_BUILD_ARGS }} --target ${{ matrix.target }} --message-format json | Out-File -encoding "UTF8" .\ffi-modules\${{ matrix.target }}\lib\build.log
       - name: Copy .dll
         run: cp .\target\${{ matrix.target }}\release\rodbus_ffi.dll .\ffi-modules\${{ matrix.target }}\lib
       - name: Upload FFI modules
@@ -77,7 +77,7 @@ jobs:
       - name: Create FFI modules dir
         run: mkdir -p ffi-modules/${{ matrix.target }}/lib
       - name: Build FFI
-        run: cross build ${{ env.$RODBUS_FFI_BUILD_ARGS }} --target ${{ matrix.target }} --message-format json > ffi-modules/${{ matrix.target }}/lib/build.log
+        run: cross build ${{ env.RODBUS_FFI_BUILD_ARGS }} --target ${{ matrix.target }} --message-format json > ffi-modules/${{ matrix.target }}/lib/build.log
       - name: Copy .so
         run: cp  ./target/${{ matrix.target }}/release/librodbus_ffi.so ./ffi-modules/${{ matrix.target }}/lib
       - name: Upload compiled FFI modules
