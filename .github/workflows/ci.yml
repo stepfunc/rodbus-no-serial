@@ -33,8 +33,6 @@ jobs:
       - name: Copy Windows config
         shell: pwsh
         run: Copy-Item -Path .cargo/config-windows.toml -Destination .cargo/config.toml
-      - name: Caching
-        uses: Swatinem/rust-cache@v2
       - name: Create FFI modules dir
         run: mkdir ffi-modules\${{ matrix.target }}\lib
       - name: Build FFI
@@ -69,8 +67,6 @@ jobs:
           toolchain: stable
           target: ${{ matrix.target }}
           override: true
-      - name: Caching
-        uses: Swatinem/rust-cache@v2
       - name: Install Rust Cross
         run: cargo install cross
       - name: Create FFI modules dir
