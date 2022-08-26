@@ -131,3 +131,22 @@ jobs:
           path: |
             ffi/bindings/dotnet/nupkg/rodbus*.nupkg
             ffi/bindings/dotnet/nupkg/rodbus*.snupkg
+  # Create Github Release
+  release:
+    needs: [packaging]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v3
+        with:
+          path: artifacts
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v1
+        with:
+          draft: true
+          files: |
+            artifacts/*
+            artifacts/**/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
