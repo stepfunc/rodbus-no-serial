@@ -114,3 +114,8 @@ jobs:
           path: ffi-modules
       - name: Create FFI third-party-licenses.txt
         run: bom-tools gen-licenses-dir ./ffi-modules build.log ./dep_config.json > third-party-licenses.txt
+      - name: Upload third-party-licenses.txt
+        uses: actions/upload-artifact@v3
+        with:
+          name: third-party-licenses
+          path: third-party-licenses.txt
