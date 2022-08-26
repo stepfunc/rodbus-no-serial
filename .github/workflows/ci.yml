@@ -76,7 +76,7 @@ jobs:
       - name: Build FFI
         run: cross build -p rodbus-ffi --release --no-default-features --features tls --target ${{ matrix.target }} --message-format json > ffi-modules/${{ matrix.target }}/build.ffi.log
       - name: Copy .so
-        run: cp  .\target\${{ matrix.target }}\release\librodbus_ffi.so .\ffi-modules\${{ matrix.target }}\lib
+        run: cp  ./target/${{ matrix.target }}/release/librodbus_ffi.so ./ffi-modules/${{ matrix.target }}/lib
       - name: Upload compiled FFI modules
         uses: actions/upload-artifact@v3
         with:
