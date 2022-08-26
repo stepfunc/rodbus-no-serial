@@ -146,7 +146,8 @@ jobs:
         with:
           draft: true
           files: |
-            artifacts/*
-            artifacts/**/*
+            artifacts/dotnet-bindings/rodbus*.nupkg
+            artifacts/dotnet-bindings/rodbus*.snupkg
+            artifacts/third-party-licenses/third-party-licenses.txt
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
