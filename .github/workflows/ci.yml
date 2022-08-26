@@ -19,7 +19,7 @@ jobs:
           - target: x86_64-pc-windows-msvc # 64-bit MSVC (Windows 7+)
             extra-param: # nothing
     steps:
-      - name: Checkout
+      - name: Checkout Rodbus
         uses: actions/checkout@v3
         with:
           repository: stepfunc/rodbus
@@ -57,7 +57,7 @@ jobs:
           - x86_64-unknown-linux-gnu # 64-bit Linux (kernel 2.6.32+, glibc 2.11+)
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout Rodbus
         uses: actions/checkout@v3
         with:
           repository: stepfunc/rodbus
@@ -84,3 +84,37 @@ jobs:
         with:
           name: ffi-modules
           path: ffi-modules
+  # Package Nuget
+  packaging:
+    needs: [ffi-cross, ffi-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+          override: true
+      - name: Caching
+        uses: Swatinem/rust-cache@v2
+      - name: Checkout BOM tools repo
+        uses: actions/checkout@v3
+        with:
+          repository: stepfunc/bom-tools
+          ref: 0.1.0
+          path: bom-tools
+      - name: Install BOM tools
+        working-directory: bom-tools
+        run: cargo install --path bom-tools
+      - name: Checkout Rodbus
+        uses: actions/checkout@v3
+        with:
+          repository: stepfunc/rodbus
+          ref: ${{ env.RODBUS_TAG }}
+      - name: Download compiled FFI
+        uses: actions/download-artifact@v2
+        with:
+          name: ffi-modules
+          path: ffi-modules
+      - name: Create FFI third-party-licenses.txt
+        run: bom-tools gen-licenses-dir ./ffi-modules build.log ./dep_config.json > third-party-licenses.txt
