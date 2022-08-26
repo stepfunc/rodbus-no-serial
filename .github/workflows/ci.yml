@@ -128,4 +128,6 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: dotnet-bindings
-          path: ffi/bindings/dotnet/nupkg/*
+          path: |
+            ffi/bindings/dotnet/nupkg/rodbus*.nupkg
+            ffi/bindings/dotnet/nupkg/rodbus*.snupkg
