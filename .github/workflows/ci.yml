@@ -34,11 +34,11 @@ jobs:
         shell: pwsh
         run: Copy-Item -Path .cargo/config-windows.toml -Destination .cargo/config.toml
       - name: Create FFI modules dir
-        run: mkdir ffi-modules\${{ matrix.target }}\lib
+        run: mkdir ffi-modules\${{ matrix.target }}
       - name: Build FFI
-        run: cargo build --release -p rodbus-ffi --no-default-features --features tls --target ${{ matrix.target }} --message-format json | Out-File -encoding "UTF8" .\ffi-modules\${{ matrix.target }}\lib\build.log
+        run: cargo build --release -p rodbus-ffi --no-default-features --features tls --target ${{ matrix.target }} --message-format json | Out-File -encoding "UTF8" .\ffi-modules\${{ matrix.target }}\build.log
       - name: Copy .dll
-        run: cp .\target\${{ matrix.target }}\release\rodbus_ffi.dll .\ffi-modules\${{ matrix.target }}\lib
+        run: cp .\target\${{ matrix.target }}\release\rodbus_ffi.dll .\ffi-modules\${{ matrix.target }}
       - name: Upload FFI modules
         uses: actions/upload-artifact@v3
         with:
@@ -70,11 +70,11 @@ jobs:
       - name: Install Rust Cross
         run: cargo install cross
       - name: Create FFI modules dir
-        run: mkdir -p ffi-modules/${{ matrix.target }}/lib
+        run: mkdir -p ffi-modules/${{ matrix.target }}
       - name: Build FFI
-        run: cross build --release -p rodbus-ffi --no-default-features --features tls --target ${{ matrix.target }} --message-format json > ffi-modules/${{ matrix.target }}/lib/build.log
+        run: cross build --release -p rodbus-ffi --no-default-features --features tls --target ${{ matrix.target }} --message-format json > ffi-modules/${{ matrix.target }}/build.log
       - name: Copy .so
-        run: cp  ./target/${{ matrix.target }}/release/librodbus_ffi.so ./ffi-modules/${{ matrix.target }}/lib
+        run: cp  ./target/${{ matrix.target }}/release/librodbus_ffi.so ./ffi-modules/${{ matrix.target }}
       - name: Upload compiled FFI modules
         uses: actions/upload-artifact@v3
         with:
