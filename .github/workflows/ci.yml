@@ -1,6 +1,6 @@
 name: CI
 env:
-  $RODBUS_TAG: 134b1424e39a56dfe99fe4a35a57fc4d8c82e9dc
+  $RODBUS_TAG: 1.0.0
 on:
   push:
     branches:
