@@ -66,6 +66,8 @@ jobs:
         with:
           repository: stepfunc/rodbus
           ref: ${{ env.RODBUS_TAG }}
+      - name: Add Cross.toml
+        run: printf "[build.env]\npassthrough = ["CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_RUSTFLAGS", "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_RUSTFLAGS"]\n" >> Cross.toml
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
