@@ -46,6 +46,9 @@ jobs:
           path: ffi-modules
   # Cross-compile FFI for Linux platforms
   ffi-cross:
+    env:
+      CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_RUSTFLAGS: "-C target-feature=-crt-static"
+      CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_RUSTFLAGS: "-C target-feature=-crt-static"
     strategy:
       fail-fast: false
       matrix:
@@ -57,10 +60,6 @@ jobs:
           - x86_64-unknown-linux-musl # 64-bit Linux with MUSL
     runs-on: ubuntu-latest
     steps:
-      - name: Set X86_64 environment variables
-        run: export CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_RUSTFLAGS="-C target-feature=-crt-static"
-      - name: Set aarch64 environment variables
-        run: export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_RUSTFLAGS="-C target-feature=-crt-static"
       - name: Checkout Rodbus
         uses: actions/checkout@v3
         with:
