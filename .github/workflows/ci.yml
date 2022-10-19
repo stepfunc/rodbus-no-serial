@@ -1,6 +1,6 @@
 name: CI
 env:
-  $RODBUS_TAG: 1.0.0
+  $RODBUS_TAG: release/prep-1.1.0
 on:
   push:
     branches:
@@ -30,9 +30,6 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-      - name: Copy Windows config
-        shell: pwsh
-        run: Copy-Item -Path .cargo/config-windows.toml -Destination .cargo/config.toml
       - name: Create FFI modules dir
         run: mkdir ffi-modules\${{ matrix.target }}
       - name: Build FFI
@@ -47,8 +44,10 @@ jobs:
   # Cross-compile FFI for Linux platforms
   ffi-cross:
     env:
+      # By default, MUSL will not produce a cdylib with dynamic linkage to MUSL LIB C
       CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_RUSTFLAGS: "-C target-feature=-crt-static"
       CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_RUSTFLAGS: "-C target-feature=-crt-static"
+      CARGO_TARGET_ARM_UNKNOWN_LINUX_MUSLEABIHF_RUSTFLAGS: "-C target-feature=-crt-static"
     strategy:
       fail-fast: false
       matrix:
@@ -58,6 +57,7 @@ jobs:
           - x86_64-unknown-linux-gnu # 64-bit Linux (kernel 2.6.32+, glibc 2.11+)
           - aarch64-unknown-linux-musl # ARM64 Linux with MUSL
           - x86_64-unknown-linux-musl # 64-bit Linux with MUSL
+          - arm-unknown-linux-musleabihf # ARMv6 Linux with MUSL, hardfloat
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Rodbus
@@ -65,8 +65,6 @@ jobs:
         with:
           repository: stepfunc/rodbus
           ref: ${{ env.RODBUS_TAG }}
-      - name: Add Cross.toml
-        run: printf "[build.env]\npassthrough = [\"CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_RUSTFLAGS\", \"CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_RUSTFLAGS\"]\n" >> Cross.toml
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -98,8 +96,6 @@ jobs:
           profile: minimal
           toolchain: stable
           override: true
-      - name: Caching
-        uses: Swatinem/rust-cache@v2
       - name: Checkout BOM tools repo
         uses: actions/checkout@v3
         with:
@@ -130,7 +126,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: run
-          args: --bin rodbus-bindings -- --dotnet --package ./ffi-modules -f third-party-licenses.txt
+          args: --bin rodbus-bindings -- --dotnet --package ./ffi-modules -o ./packaging.json -f third-party-licenses.txt
       - name: Upload .NET bindings
         uses: actions/upload-artifact@v3
         with:
