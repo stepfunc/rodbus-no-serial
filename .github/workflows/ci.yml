@@ -18,20 +18,18 @@ jobs:
             extra-param: # nothing
     steps:
       - name: Checkout Rodbus
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: stepfunc/rodbus
-          ref: 1.3.1
+          ref: 1.4.0
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
           toolchain: stable
-          override: true
       - name: Create FFI modules dir
         run: mkdir ffi-modules\${{ matrix.target }}
       - name: Build FFI
-        run: cargo build --release -p rodbus-ffi --no-default-features --features tls --target ${{ matrix.target }} --message-format json | Out-File -encoding "UTF8" .\ffi-modules\${{ matrix.target }}\build.log
+        run: cargo build --release -p rodbus-ffi --no-default-features --features tls --target ${{ matrix.target }}
       - name: Copy .dll
         run: cp .\target\${{ matrix.target }}\release\rodbus_ffi.dll .\ffi-modules\${{ matrix.target }}
       - name: Upload FFI modules
@@ -59,23 +57,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Rodbus
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: stepfunc/rodbus
-          ref: 1.3.1
+          ref: 1.4.0
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
           toolchain: stable
-          target: ${{ matrix.target }}
-          override: true
+          targets: ${{ matrix.target }}
       - name: Install Rust Cross
         run: cargo install cross
       - name: Create FFI modules dir
         run: mkdir -p ffi-modules/${{ matrix.target }}
       - name: Build FFI
-        run: cross build --release -p rodbus-ffi --no-default-features --features tls --target ${{ matrix.target }} --message-format json > ffi-modules/${{ matrix.target }}/build.log
+        run: cross build --release -p rodbus-ffi --no-default-features --features tls --target ${{ matrix.target }}
       - name: Copy .so
         run: cp  ./target/${{ matrix.target }}/release/librodbus_ffi.so ./ffi-modules/${{ matrix.target }}
       - name: Upload compiled FFI modules
@@ -89,42 +85,39 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install Rust
-        uses: actions-rs/toolchain@v1
+        uses: dtolnay/rust-toolchain@stable
         with:
-          profile: minimal
           toolchain: stable
-          override: true
-      - name: Checkout BOM tools repo
-        uses: actions/checkout@v3
-        with:
-          repository: stepfunc/bom-tools
-          ref: 0.1.0
-          path: bom-tools
-      - name: Install BOM tools
-        working-directory: bom-tools
-        run: cargo install --path bom-tools
+      - name: Install Cargo CycloneDx
+        run: cargo install cargo-cyclonedx
+      - name: Install custom allow-list tool
+        run: cargo install --git https://github.com/stepfunc/bom-tools.git
       - name: Checkout Rodbus
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: stepfunc/rodbus
-          ref: 1.3.1
+          ref: 1.4.0
       - name: Download compiled FFI
         uses: actions/download-artifact@v2
         with:
           name: ffi-modules
           path: ffi-modules
-      - name: Create FFI third-party-licenses.txt
-        run: bom-tools gen-licenses-dir ./ffi-modules build.log ./dep_config.json > third-party-licenses.txt
+      - name: Create SBOMs
+        run: |
+          for dir in ffi-modules/*; do
+            target=`basename "${dir}"`
+            cargo cyclonedx -f json --no-default-features --features tls --target $target
+            mv ./ffi/rodbus-ffi/rodbus-ffi.cdx.json ffi-modules/$target
+          done
+      - name: Create third-party-licenses.txt
+        run: allow-list gen-licenses-dir -l ffi-modules -b rodbus-ffi.cdx.json -c allowed.json > third-party-licenses.txt
       - name: Upload third-party-licenses.txt
         uses: actions/upload-artifact@v3
         with:
           name: third-party-licenses
           path: third-party-licenses.txt
       - name: Package .NET bindings
-        uses: actions-rs/cargo@v1
-        with:
-          command: run
-          args: --bin rodbus-bindings -- --dotnet --package ./ffi-modules -o ./packaging.json -f third-party-licenses.txt
+        run: cargo run --bin rodbus-bindings -- --dotnet --package ./ffi-modules -o ./packaging.json -f third-party-licenses.txt
       - name: Upload .NET bindings
         uses: actions/upload-artifact@v3
         with:
