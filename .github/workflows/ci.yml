@@ -31,7 +31,7 @@ jobs:
       - name: Create FFI modules dir
         run: mkdir ffi-modules\${{ matrix.target }}
       - name: Build FFI
-        run: cargo build --release -p rodbus-ffi --no-default-features --features tls --target ${{ matrix.target }} --message-format json | Out-File -encoding "UTF8" .\ffi-modules\${{ matrix.target }}\build.log
+        run: cargo build --release -p rodbus-ffi --no-default-features --features tls --target ${{ matrix.target }}
       - name: Copy .dll
         run: cp .\target\${{ matrix.target }}\release\rodbus_ffi.dll .\ffi-modules\${{ matrix.target }}
       - name: Upload FFI modules
@@ -75,7 +75,7 @@ jobs:
       - name: Create FFI modules dir
         run: mkdir -p ffi-modules/${{ matrix.target }}
       - name: Build FFI
-        run: cross build --release -p rodbus-ffi --no-default-features --features tls --target ${{ matrix.target }} --message-format json > ffi-modules/${{ matrix.target }}/build.log
+        run: cross build --release -p rodbus-ffi --no-default-features --features tls --target ${{ matrix.target }}
       - name: Copy .so
         run: cp  ./target/${{ matrix.target }}/release/librodbus_ffi.so ./ffi-modules/${{ matrix.target }}
       - name: Upload compiled FFI modules
