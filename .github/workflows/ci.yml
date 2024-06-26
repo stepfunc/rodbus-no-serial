@@ -88,15 +88,10 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-      - name: Checkout BOM tools repo
-        uses: actions/checkout@v4
-        with:
-          repository: stepfunc/bom-tools
-          ref: 0.1.0
-          path: bom-tools
-      - name: Install BOM tools
-        working-directory: bom-tools
-        run: cargo install --path bom-tools
+      - name: Install Cargo CycloneDx
+        run: cargo install cargo-cyclonedx
+      - name: Install custom allow-list tool
+        run: cargo install --git https://github.com/stepfunc/bom-tools.git
       - name: Checkout Rodbus
         uses: actions/checkout@v4
         with:
@@ -107,8 +102,15 @@ jobs:
         with:
           name: ffi-modules
           path: ffi-modules
-      - name: Create FFI third-party-licenses.txt
-        run: bom-tools gen-licenses-dir ./ffi-modules build.log ./dep_config.json > third-party-licenses.txt
+      - name: Create SBOMs
+        run: |
+          for dir in ffi-modules/*; do
+            target=`basename "${dir}"`
+            cargo cyclonedx -f json --no-default-features --features tls --target $target
+            mv ./ffi/rodbus-ffi/rodbus-ffi.cdx.json ffi-modules/$target
+          done
+      - name: Create third-party-licenses.txt
+        run: allow-list gen-licenses-dir -l ffi-modules -b rodbus-ffi.cdx.json -c allowed.json > third-party-licenses.txt
       - name: Upload third-party-licenses.txt
         uses: actions/upload-artifact@v3
         with:
