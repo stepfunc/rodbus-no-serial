@@ -18,10 +18,10 @@ jobs:
             extra-param: # nothing
     steps:
       - name: Checkout Rodbus
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: stepfunc/rodbus
-          ref: 1.4.0
+          ref: 1.5.0
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -33,9 +33,9 @@ jobs:
       - name: Copy .dll
         run: cp .\target\${{ matrix.target }}\release\rodbus_ffi.dll .\ffi-modules\${{ matrix.target }}
       - name: Upload FFI modules
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v6
         with:
-          name: ffi-modules
+          name: ffi-modules-${{ matrix.target }}
           path: ffi-modules
   # Cross-compile FFI for Linux platforms
   ffi-cross:
@@ -57,10 +57,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Rodbus
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: stepfunc/rodbus
-          ref: 1.4.0
+          ref: 1.5.0
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -75,9 +75,9 @@ jobs:
       - name: Copy .so
         run: cp  ./target/${{ matrix.target }}/release/librodbus_ffi.so ./ffi-modules/${{ matrix.target }}
       - name: Upload compiled FFI modules
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v6
         with:
-          name: ffi-modules
+          name: ffi-modules-${{ matrix.target }}
           path: ffi-modules
   # Package Nuget
   packaging:
@@ -93,15 +93,16 @@ jobs:
       - name: Install custom allow-list tool
         run: cargo install --git https://github.com/stepfunc/bom-tools.git
       - name: Checkout Rodbus
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: stepfunc/rodbus
-          ref: 1.4.0
+          ref: 1.5.0
       - name: Download compiled FFI
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v7
         with:
-          name: ffi-modules
+          pattern: ffi-modules-*
           path: ffi-modules
+          merge-multiple: true
       - name: Create SBOMs
         run: |
           for dir in ffi-modules/*; do
@@ -112,14 +113,14 @@ jobs:
       - name: Create third-party-licenses.txt
         run: allow-list gen-licenses-dir -l ffi-modules -b rodbus-ffi.cdx.json -c allowed.json > third-party-licenses.txt
       - name: Upload third-party-licenses.txt
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v6
         with:
           name: third-party-licenses
           path: third-party-licenses.txt
       - name: Package .NET bindings
-        run: cargo run --bin rodbus-bindings -- --dotnet --package ./ffi-modules -o ./packaging.json -f third-party-licenses.txt
+        run: cargo run --bin rodbus-bindings -- --dotnet --package ./ffi-modules --options ./packaging.json -f third-party-licenses.txt
       - name: Upload .NET bindings
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v6
         with:
           name: dotnet-bindings
           path: |
@@ -132,11 +133,11 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v7
         with:
           path: artifacts
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           draft: true
           files: |
