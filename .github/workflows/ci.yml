@@ -90,7 +90,7 @@ jobs:
         with:
           toolchain: stable
       - name: Install custom allow-list tool
-        run: cargo install --git https://github.com/stepfunc/bom-tools.git --tag 0.2.0
+        run: cargo install --git https://github.com/stepfunc/bom-tools.git --tag 0.2.1
       - name: Checkout Rodbus
         uses: actions/checkout@v6
         with:
