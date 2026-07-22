@@ -29,7 +29,8 @@ jobs:
       - name: Create FFI modules dir
         run: mkdir ffi-modules\${{ matrix.target }}
       - name: Build FFI
-        run: cargo build --release -p rodbus-ffi --no-default-features --features tls --target ${{ matrix.target }}
+        shell: bash
+        run: cargo build --release -p rodbus-ffi --no-default-features --features tls --target ${{ matrix.target }} --message-format json > ffi-modules/${{ matrix.target }}/build.json
       - name: Copy .dll
         run: cp .\target\${{ matrix.target }}\release\rodbus_ffi.dll .\ffi-modules\${{ matrix.target }}
       - name: Upload FFI modules
@@ -71,7 +72,7 @@ jobs:
       - name: Create FFI modules dir
         run: mkdir -p ffi-modules/${{ matrix.target }}
       - name: Build FFI
-        run: cross build --release -p rodbus-ffi --no-default-features --features tls --target ${{ matrix.target }}
+        run: cross build --release -p rodbus-ffi --no-default-features --features tls --target ${{ matrix.target }} --message-format json > ffi-modules/${{ matrix.target }}/build.json
       - name: Copy .so
         run: cp  ./target/${{ matrix.target }}/release/librodbus_ffi.so ./ffi-modules/${{ matrix.target }}
       - name: Upload compiled FFI modules
@@ -88,10 +89,8 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-      - name: Install Cargo CycloneDx
-        run: cargo install cargo-cyclonedx
       - name: Install custom allow-list tool
-        run: cargo install --git https://github.com/stepfunc/bom-tools.git
+        run: cargo install --git https://github.com/stepfunc/bom-tools.git --tag 0.2.0
       - name: Checkout Rodbus
         uses: actions/checkout@v6
         with:
@@ -103,15 +102,10 @@ jobs:
           pattern: ffi-modules-*
           path: ffi-modules
           merge-multiple: true
-      - name: Create SBOMs
-        run: |
-          for dir in ffi-modules/*; do
-            target=`basename "${dir}"`
-            cargo cyclonedx -f json --no-default-features --features tls --target $target
-            mv ./ffi/rodbus-ffi/rodbus-ffi.cdx.json ffi-modules/$target
-          done
+      - name: Generate cargo metadata
+        run: cargo metadata --format-version 1 --locked > metadata.json
       - name: Create third-party-licenses.txt
-        run: allow-list gen-licenses-dir -l ffi-modules -b rodbus-ffi.cdx.json -c allowed.json > third-party-licenses.txt
+        run: allow-list gen-licenses-log-dir --list-dir ffi-modules --log-file build.json --metadata-path metadata.json --config-path allowed.json > third-party-licenses.txt
       - name: Upload third-party-licenses.txt
         uses: actions/upload-artifact@v6
         with:
