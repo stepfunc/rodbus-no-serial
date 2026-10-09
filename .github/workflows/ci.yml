@@ -151,6 +151,9 @@ jobs:
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
     steps:
+      # a release of this repository packages the upstream release with the same version
+      - name: Check that the upstream ref is this release's tag
+        run: test "$RODBUS_REF" = "${{ github.ref_name }}"
       - name: Download all artifacts
         uses: actions/download-artifact@v7
         with:
