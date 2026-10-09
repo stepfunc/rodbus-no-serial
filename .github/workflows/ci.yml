@@ -4,6 +4,9 @@ on:
     tags:
       - "*"
   pull_request:
+env:
+  # the upstream rodbus release that this repository packages
+  RODBUS_REF: ec1a587c731163728be456ff0bc943c1c2c853e8
 jobs:
   # Windows MSVC x64 FFI  (Windows 7+)
   ffi-windows:
@@ -19,7 +22,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           repository: stepfunc/rodbus
-          ref: 1.5.0
+          ref: ${{ env.RODBUS_REF }}
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -28,7 +31,7 @@ jobs:
         run: mkdir ffi-modules\${{ matrix.target }}
       - name: Build FFI
         shell: bash
-        run: cargo build --release -p rodbus-ffi --no-default-features --features tls --target ${{ matrix.target }} --message-format json > ffi-modules/${{ matrix.target }}/build.json
+        run: bash .github/scripts/build-evidence.sh evidence/ffi/${{ matrix.target }} cargo -p rodbus-ffi --target ${{ matrix.target }} --no-default-features --features tls
       - name: Copy .dll
         run: cp .\target\${{ matrix.target }}\release\rodbus_ffi.dll .\ffi-modules\${{ matrix.target }}
       - name: Upload FFI modules
@@ -36,6 +39,11 @@ jobs:
         with:
           name: ffi-modules-${{ matrix.target }}
           path: ffi-modules
+      - name: Upload build evidence
+        uses: actions/upload-artifact@v6
+        with:
+          name: evidence-${{ matrix.target }}
+          path: evidence
   # Cross-compile FFI for Linux platforms
   ffi-cross:
     env:
@@ -59,7 +67,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           repository: stepfunc/rodbus
-          ref: 1.5.0
+          ref: ${{ env.RODBUS_REF }}
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -70,7 +78,7 @@ jobs:
       - name: Create FFI modules dir
         run: mkdir -p ffi-modules/${{ matrix.target }}
       - name: Build FFI
-        run: cross build --release -p rodbus-ffi --no-default-features --features tls --target ${{ matrix.target }} --message-format json > ffi-modules/${{ matrix.target }}/build.json
+        run: bash .github/scripts/build-evidence.sh evidence/ffi/${{ matrix.target }} cross -p rodbus-ffi --target ${{ matrix.target }} --no-default-features --features tls
       - name: Copy .so
         run: cp  ./target/${{ matrix.target }}/release/librodbus_ffi.so ./ffi-modules/${{ matrix.target }}
       - name: Upload compiled FFI modules
@@ -78,6 +86,11 @@ jobs:
         with:
           name: ffi-modules-${{ matrix.target }}
           path: ffi-modules
+      - name: Upload build evidence
+        uses: actions/upload-artifact@v6
+        with:
+          name: evidence-${{ matrix.target }}
+          path: evidence
   # Package Nuget
   packaging:
     needs: [ffi-cross, ffi-windows]
@@ -87,30 +100,44 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: stable
-      - name: Install custom allow-list tool
-        run: cargo install --git https://github.com/stepfunc/bom-tools.git --tag 0.2.1
+      - name: Install bom-tools
+        run: cargo install --locked --git https://github.com/stepfunc/bom-tools.git --tag 0.3.0
       - name: Checkout Rodbus
         uses: actions/checkout@v6
         with:
           repository: stepfunc/rodbus
-          ref: 1.5.0
+          ref: ${{ env.RODBUS_REF }}
       - name: Download compiled FFI
         uses: actions/download-artifact@v7
         with:
           pattern: ffi-modules-*
           path: ffi-modules
           merge-multiple: true
-      - name: Generate cargo metadata
-        run: cargo metadata --format-version 1 --locked > metadata.json
-      - name: Create third-party-licenses.txt
-        run: allow-list gen-licenses-log-dir --list-dir ffi-modules --log-file build.json --metadata-path metadata.json --config-path allowed.json > third-party-licenses.txt
+      - name: Download build evidence
+        uses: actions/download-artifact@v7
+        with:
+          pattern: evidence-*
+          path: evidence
+          merge-multiple: true
+      - name: Create third-party-licenses.txt and the SBOM
+        run: |
+          cargo metadata --format-version 1 --all-features --locked > metadata.json
+          COMMON="--root-package rodbus-ffi -m metadata.json -c allowed.json"
+          bom-tools licenses -e evidence/ffi $COMMON > third-party-licenses.txt
+          mkdir sboms
+          bom-tools sbom -e evidence/ffi $COMMON --lockfile Cargo.lock > sboms/rodbus-ffi.cdx.json
       - name: Upload third-party-licenses.txt
         uses: actions/upload-artifact@v6
         with:
           name: third-party-licenses
           path: third-party-licenses.txt
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v6
+        with:
+          name: sboms
+          path: sboms
       - name: Package .NET bindings
-        run: cargo run --bin rodbus-bindings -- --dotnet --package ./ffi-modules --options ./packaging.json -f third-party-licenses.txt
+        run: cargo run --bin rodbus-bindings -- --dotnet --package ./ffi-modules --options ./packaging.json -f third-party-licenses.txt -f sboms/rodbus-ffi.cdx.json
       - name: Upload .NET bindings
         uses: actions/upload-artifact@v6
         with:
@@ -136,5 +163,6 @@ jobs:
             artifacts/dotnet-bindings/rodbus*.nupkg
             artifacts/dotnet-bindings/rodbus*.snupkg
             artifacts/third-party-licenses/third-party-licenses.txt
+            artifacts/sboms/*.cdx.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
