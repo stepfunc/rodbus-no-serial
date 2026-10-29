@@ -4,12 +4,19 @@ on:
     tags:
       - "*"
   pull_request:
+permissions:
+  contents: read
 env:
   # the upstream rodbus release that this repository packages
-  RODBUS_REF: ec1a587c731163728be456ff0bc943c1c2c853e8
+  RODBUS_REF: 1.6.0
 jobs:
   # Windows MSVC x64 FFI  (Windows 7+)
   ffi-windows:
+    # Release tags build the shipped libraries with one codegen unit and thin LTO like the upstream
+    # release; other runs keep cargo's release defaults. Symbols are not stripped
+    env:
+      CARGO_PROFILE_RELEASE_LTO: ${{ startsWith(github.ref, 'refs/tags/') && 'thin' || 'false' }}
+      CARGO_PROFILE_RELEASE_CODEGEN_UNITS: ${{ startsWith(github.ref, 'refs/tags/') && '1' || '16' }}
     runs-on: windows-latest
     strategy:
       fail-fast: false
@@ -19,34 +26,37 @@ jobs:
             extra-param: # nothing
     steps:
       - name: Checkout Rodbus
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: stepfunc/rodbus
+          persist-credentials: false
           ref: ${{ env.RODBUS_REF }}
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
+      - name: Install Rust from rust-toolchain.toml
+        run: rustup toolchain install
       - name: Create FFI modules dir
         run: mkdir ffi-modules\${{ matrix.target }}
       - name: Build FFI
         shell: bash
-        run: bash .github/scripts/build-evidence.sh evidence/ffi/${{ matrix.target }} cargo -p rodbus-ffi --target ${{ matrix.target }} --no-default-features --features tls
+        run: bash .github/scripts/build-evidence.sh evidence/ffi/${{ matrix.target }} cargo -p rodbus-ffi-c --target ${{ matrix.target }} --no-default-features --features tls-aws-lc
       - name: Copy .dll
         run: cp .\target\${{ matrix.target }}\release\rodbus_ffi.dll .\ffi-modules\${{ matrix.target }}
       - name: Upload FFI modules
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ffi-modules-${{ matrix.target }}
           path: ffi-modules
       - name: Upload build evidence
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: evidence-${{ matrix.target }}
           path: evidence
   # Cross-compile FFI for Linux platforms
   ffi-cross:
+    # Release tags build the shipped libraries with one codegen unit and thin LTO like the upstream
+    # release; other runs keep cargo's release defaults. Symbols are not stripped
     env:
+      CARGO_PROFILE_RELEASE_LTO: ${{ startsWith(github.ref, 'refs/tags/') && 'thin' || 'false' }}
+      CARGO_PROFILE_RELEASE_CODEGEN_UNITS: ${{ startsWith(github.ref, 'refs/tags/') && '1' || '16' }}
       # By default, MUSL will not produce a cdylib with dynamic linkage to MUSL LIB C
       CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_RUSTFLAGS: "-C target-feature=-crt-static"
       CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_RUSTFLAGS: "-C target-feature=-crt-static"
@@ -64,30 +74,32 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Rodbus
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: stepfunc/rodbus
+          persist-credentials: false
           ref: ${{ env.RODBUS_REF }}
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-          targets: ${{ matrix.target }}
+      - name: Install Rust from rust-toolchain.toml
+        env:
+          TARGET: ${{ matrix.target }}
+        run: |
+          rustup toolchain install
+          rustup target add "$TARGET"
       - name: Install Rust Cross
-        run: cargo install cross
+        run: cargo install cross --locked --version 0.2.5
       - name: Create FFI modules dir
         run: mkdir -p ffi-modules/${{ matrix.target }}
       - name: Build FFI
-        run: bash .github/scripts/build-evidence.sh evidence/ffi/${{ matrix.target }} cross -p rodbus-ffi --target ${{ matrix.target }} --no-default-features --features tls
+        run: bash .github/scripts/build-evidence.sh evidence/ffi/${{ matrix.target }} cross -p rodbus-ffi-c --target ${{ matrix.target }} --no-default-features --features tls-aws-lc
       - name: Copy .so
         run: cp  ./target/${{ matrix.target }}/release/librodbus_ffi.so ./ffi-modules/${{ matrix.target }}
       - name: Upload compiled FFI modules
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ffi-modules-${{ matrix.target }}
           path: ffi-modules
       - name: Upload build evidence
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: evidence-${{ matrix.target }}
           path: evidence
@@ -96,25 +108,25 @@ jobs:
     needs: [ffi-cross, ffi-windows]
     runs-on: ubuntu-latest
     steps:
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-      - name: Install bom-tools
-        run: cargo install --locked --git https://github.com/stepfunc/bom-tools.git --tag 0.3.0
       - name: Checkout Rodbus
-        uses: actions/checkout@v6
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: stepfunc/rodbus
+          persist-credentials: false
           ref: ${{ env.RODBUS_REF }}
+      - name: Install Rust from rust-toolchain.toml
+        run: rustup toolchain install
+      - name: Install bom-tools
+        # 0.3.0
+        run: cargo install --locked --git https://github.com/stepfunc/bom-tools.git --rev a5c5797217b26f74f5682c0551daaffa501f7fd6
       - name: Download compiled FFI
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: ffi-modules-*
           path: ffi-modules
           merge-multiple: true
       - name: Download build evidence
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: evidence-*
           path: evidence
@@ -122,24 +134,24 @@ jobs:
       - name: Create third-party-licenses.txt and the SBOM
         run: |
           cargo metadata --format-version 1 --all-features --locked > metadata.json
-          COMMON="--root-package rodbus-ffi -m metadata.json -c allowed.json"
+          COMMON="--root-package rodbus-ffi-c -m metadata.json -c allowed.json"
           bom-tools licenses -e evidence/ffi $COMMON > third-party-licenses.txt
           mkdir sboms
           bom-tools sbom -e evidence/ffi $COMMON --lockfile Cargo.lock > sboms/rodbus-ffi.cdx.json
       - name: Upload third-party-licenses.txt
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: third-party-licenses
           path: third-party-licenses.txt
       - name: Upload SBOM
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: sboms
           path: sboms
       - name: Package .NET bindings
         run: cargo run --bin rodbus-bindings -- --dotnet --package ./ffi-modules --options ./packaging.json -f third-party-licenses.txt -f sboms/rodbus-ffi.cdx.json
       - name: Upload .NET bindings
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: dotnet-bindings
           path: |
@@ -150,16 +162,18 @@ jobs:
     needs: [packaging]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
     steps:
       # a release of this repository packages the upstream release with the same version
       - name: Check that the upstream ref is this release's tag
-        run: test "$RODBUS_REF" = "${{ github.ref_name }}"
+        run: test "$RODBUS_REF" = "$GITHUB_REF_NAME"
       - name: Download all artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           path: artifacts
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v3
+        uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           draft: true
           files: |
